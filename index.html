@@ -335,7 +335,7 @@ function fmtClock(sec){const h=Math.floor(sec/3600),m=Math.floor((sec%3600)/60);
 function collect(){
   const base=new Date(2026,5,4),arr=[];
   PLAN.forEach(p=>{const r=DB.weeks[p.w];if(!r)return;const d=parseFloat(r.dist),sec=parseTime(r.time);arr.push({x:p.w,dist:isNaN(d)?null:d,sec});});
-  (DB.events||[]).forEach(ev=>{const dt=new Date(ev.date+"T12:00:00");const x=((dt-base)/86400000)/7+1;const d=parseFloat(ev.dist);const dd=isNaN(d)?(ev.km?parseFloat(ev.km):NaN):d;const sec=parseTime(ev.time);arr.push({x,dist:isNaN(dd)?null:dd,sec,ev:true});});
+  (DB.events||[]).forEach(ev=>{const dt=new Date(ev.date+"T12:00:00");const x=((dt-base)/86400000)/7+1;const d=parseFloat(ev.dist);const sec=parseTime(ev.time);arr.push({x,dist:isNaN(d)?null:d,sec,ev:true});});
   return arr.sort((a,b)=>a.x-b.x);
 }
 function chartSVG(main,ref,yfmt){
