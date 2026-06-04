@@ -1,0 +1,15 @@
+{
+  "name": "Road to 21K — Training Log",
+  "short_name": "Road to 21K",
+  "description": "26-week half-marathon training log: track long runs, races, extra runs, pace and weight.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#10120e",
+  "theme_color": "#10120e",
+  "icons": [
+    { "src": "icon.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any" },
+    { "src": "icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
