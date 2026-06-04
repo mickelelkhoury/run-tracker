@@ -117,6 +117,16 @@
   .cfoot{font-family:'DM Mono',monospace;font-size:10px;color:var(--mut);margin-top:8px;letter-spacing:.04em}
   .cempty{color:var(--mut);font-size:13px;padding:22px 4px;text-align:center;line-height:1.5}
   .ylab{font-family:'DM Mono',monospace;font-size:9px;fill:var(--mut)}
+  .badge.extra{color:var(--volt-dim);border-color:rgba(169,204,47,.4)}
+  .secsub{font-size:12.5px;color:var(--mut);margin:-4px 4px 12px;line-height:1.5}
+  /* help / how-to */
+  .help{border:1px solid var(--line);border-radius:14px;background:var(--panel);padding:16px 18px;margin-bottom:12px}
+  .help h4{font-family:'Spline Sans',sans-serif;font-weight:600;font-size:14px;margin:16px 0 5px;color:var(--ink);display:flex;align-items:center;gap:8px}
+  .help h4:first-child{margin-top:0}
+  .help h4 .dot{width:7px;height:7px;border-radius:50%;background:var(--volt);flex-shrink:0}
+  .help p{font-size:13px;color:var(--mut);line-height:1.6}
+  .help b{color:var(--ink);font-weight:600}
+  .help code{font-family:'DM Mono',monospace;font-size:12px;background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:1px 6px;color:var(--volt-dim)}
 </style>
 </head>
 <body>
@@ -158,7 +168,37 @@
       <button class="btn" id="ev-save">Add event</button>
     </div>
     <div id="events"></div>
+    <div class="sec">Extra runs <span class="add" id="addRunBtn">+ Add</span></div>
+    <div class="secsub">Ran more than once this week? Log any bonus run here — it still counts toward your total distance and charts.</div>
+    <div class="addform" id="addRunForm">
+      <div class="row">
+        <label class="f"><span class="lt">Date</span><input type="date" id="run-date"></label>
+        <label class="f"><span class="lt">Distance (km)</span><input id="run-km" inputmode="decimal" placeholder="5"></label>
+      </div>
+      <div class="row">
+        <label class="f"><span class="lt">Time (optional)</span><input id="run-time" placeholder="hh:mm:ss"></label>
+        <label class="f"><span class="lt">Note (optional)</span><input id="run-note" placeholder="easy / tempo / where"></label>
+      </div>
+      <button class="btn" id="run-save">Add run</button>
+    </div>
+    <div id="extras"></div>
     <div id="weeks"></div>
+  </div>
+
+  <div class="sec">How to use this log</div>
+  <div class="help">
+    <h4><span class="dot"></span>Log a long run</h4>
+    <p>Tap any week card to open it. Pick the day you ran, then enter your <b>distance</b> and <b>time</b>. Tap the circle on the right to mark the week done — it turns green and fills your progress bar.</p>
+    <h4><span class="dot"></span>Entering time &amp; pace</h4>
+    <p>Type time as <code>hh:mm:ss</code> (e.g. <code>1:45:30</code>) or just <code>mm:ss</code> (e.g. <code>52:10</code>). Your <b>pace</b> is worked out automatically from distance ÷ time and charted up top — lower is faster.</p>
+    <h4><span class="dot"></span>Add an extra run</h4>
+    <p>Ran twice in a week, or did a midweek jog? Open <b>Extra runs ▸ + Add</b>, set the date and distance (time and a note are optional). Extra runs count toward your <b>total distance</b> and the charts, but not the “/26 long runs done” count.</p>
+    <h4><span class="dot"></span>Races &amp; events</h4>
+    <p>Use <b>Races &amp; Events ▸ + Add</b> for a race. A race <b>replaces</b> that week's long run — don't do both. After you run it, open the event card and log the distance and time so it counts.</p>
+    <h4><span class="dot"></span>Weight &amp; accent colour</h4>
+    <p>Enter your weight in any week to build the trend line at the top. Tap the colour swatch in the header to recolour the whole app.</p>
+    <h4><span class="dot"></span>Where your data lives</h4>
+    <p>Everything saves automatically <b>on this device</b>, in your browser. There's no account and no sync between devices — clearing your browser's site data will erase your log, so don't clear it if you want to keep your history.</p>
   </div>
 
   <footer>
@@ -205,7 +245,7 @@ const NOTES = {
   def:"Easy, conversational pace (~8:15–8:45/km). It should feel comfortable, not a grind."
 };
 const KEY="r2k_db_v1";
-let DB={weeks:{},events:null,accent:"#d4ff3d"};
+let DB={weeks:{},events:null,extras:null,accent:"#d4ff3d"};
 const $=s=>document.querySelector(s);
 
 /* ---- storage: localStorage (works on GitHub Pages / phone). Falls back gracefully. ---- */
@@ -214,6 +254,7 @@ function loadDB(){
   if(!DB.events){ // seed the July 5 10K once
     DB.events=[{id:"seed-10k",title:"10K Race",date:"2026-07-05",km:10,done:false,day:"",dist:"",time:"",notes:""}];
   }
+  if(!DB.extras)DB.extras=[]; // ad-hoc / extra runs
 }
 let st;function saveDB(){clearTimeout(st);st=setTimeout(()=>{try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){}},250);}
 
@@ -308,6 +349,39 @@ function renderEvents(){
   });
 }
 
+/* ---- render extra / ad-hoc runs ---- */
+function renderExtras(){
+  const box=$("#extras");box.innerHTML="";
+  DB.extras.sort((a,b)=>a.date<b.date?-1:1);
+  DB.extras.forEach(rn=>{
+    const el=document.createElement("div");el.className="week evt"+(rn.done?" done":"");
+    el.innerHTML=`
+      <div class="whead">
+        <div class="wnum e">RUN</div>
+        <div class="wdist"><div class="km">${rn.dist||'—'}<small> km</small></div><div class="dt">${fmtDate(rn.date)}${rn.time?' · '+rn.time:''}${rn.note?' · '+rn.note:''}</div></div>
+        <span class="badge extra">Extra</span>
+        <div class="check"><svg viewBox="0 0 24 24" fill="none"><path d="M5 13l4 4L19 7" stroke="#10120e" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      </div>
+      <div class="body"><div class="binner">
+        <div class="note"><b>Extra run:</b> a bonus run on top of your weekly long run — it counts toward total distance and the charts, but not the “/26 long runs done” count.</div>
+        <div class="grid2">
+          <label class="f"><span class="lt">Distance (km)</span><input inputmode="decimal" class="i-dist" placeholder="5" value="${rn.dist||''}"></label>
+          <label class="f"><span class="lt">Time</span><input class="i-time" placeholder="hh:mm:ss" value="${rn.time||''}"></label>
+        </div>
+        <label class="f"><span class="lt">Note</span><input class="i-note" placeholder="easy / tempo / where" value="${rn.note||''}"></label>
+        <div class="delrow"><button class="del">Delete run</button></div>
+      </div></div>`;
+    el.querySelector(".whead").addEventListener("click",e=>{if(e.target.closest(".check"))return;el.classList.toggle("open");});
+    el.querySelector(".check").addEventListener("click",e=>{e.stopPropagation();rn.done=!rn.done;el.classList.toggle("done",rn.done);saveDB();});
+    const di=el.querySelector(".i-dist"),ti=el.querySelector(".i-time"),no=el.querySelector(".i-note");
+    di.addEventListener("input",()=>{rn.dist=di.value;el.querySelector(".km").innerHTML=(rn.dist||'—')+'<small> km</small>';saveDB();updateStats();renderCharts();});
+    ti.addEventListener("input",()=>{rn.time=ti.value;el.querySelector(".dt").innerHTML=`${fmtDate(rn.date)}${rn.time?' · '+rn.time:''}${rn.note?' · '+rn.note:''}`;saveDB();renderCharts();});
+    no.addEventListener("input",()=>{rn.note=no.value;el.querySelector(".dt").innerHTML=`${fmtDate(rn.date)}${rn.time?' · '+rn.time:''}${rn.note?' · '+rn.note:''}`;saveDB();});
+    el.querySelector(".del").addEventListener("click",()=>{DB.extras=DB.extras.filter(x=>x.id!==rn.id);saveDB();renderExtras();renderCharts();updateStats();});
+    box.appendChild(el);
+  });
+}
+
 /* ---- weight trend ---- */
 function renderWeight(){
   const pts=[];PLAN.forEach(p=>{const r=DB.weeks[p.w];if(r&&r.weight){const v=parseFloat(r.weight);if(!isNaN(v))pts.push({w:p.w,v});}});
@@ -336,6 +410,7 @@ function collect(){
   const base=new Date(2026,5,4),arr=[];
   PLAN.forEach(p=>{const r=DB.weeks[p.w];if(!r)return;const d=parseFloat(r.dist),sec=parseTime(r.time);arr.push({x:p.w,dist:isNaN(d)?null:d,sec});});
   (DB.events||[]).forEach(ev=>{const dt=new Date(ev.date+"T12:00:00");const x=((dt-base)/86400000)/7+1;const d=parseFloat(ev.dist);const sec=parseTime(ev.time);arr.push({x,dist:isNaN(d)?null:d,sec,ev:true});});
+  (DB.extras||[]).forEach(rn=>{const dt=new Date(rn.date+"T12:00:00");if(isNaN(dt))return;const x=((dt-base)/86400000)/7+1;const d=parseFloat(rn.dist);const sec=parseTime(rn.time);arr.push({x,dist:isNaN(d)?null:d,sec,extra:true});});
   return arr.sort((a,b)=>a.x-b.x);
 }
 function chartSVG(main,ref,yfmt){
@@ -386,6 +461,8 @@ function renderCharts(){
 }
 
 function updateStats(){let done=0,km=0;PLAN.forEach(p=>{const r=DB.weeks[p.w];if(!r)return;if(r.done)done++;const v=parseFloat(r.dist);if(!isNaN(v))km+=v;});
+  (DB.extras||[]).forEach(rn=>{const v=parseFloat(rn.dist);if(!isNaN(v))km+=v;});
+  (DB.events||[]).forEach(ev=>{const v=parseFloat(ev.dist);if(!isNaN(v))km+=v;});
   $("#doneN").innerHTML=done+'<small>/26</small>';$("#kmN").innerHTML=(Math.round(km*10)/10)+'<small> km</small>';$("#barFill").style.width=(done/26*100)+"%";}
 function countdown(){const race=new Date("2026-11-29T08:00:00");const days=Math.max(0,Math.ceil((race-new Date())/86400000));$("#cdNum").textContent=days;}
 
@@ -400,13 +477,22 @@ function initAdd(){
     $("#ev-title").value="";$("#ev-date").value="";$("#ev-km").value="";$("#ev-note").value="";
     $("#addForm").classList.remove("open");
   });
+  $("#addRunBtn").addEventListener("click",()=>$("#addRunForm").classList.toggle("open"));
+  $("#run-save").addEventListener("click",()=>{
+    const d=$("#run-date").value,k=$("#run-km").value.trim(),t=$("#run-time").value.trim(),n=$("#run-note").value.trim();
+    if(!d){$("#run-date").focus();return;}
+    DB.extras.push({id:"rn"+Date.now(),date:d,dist:k,time:t,note:n,done:false});
+    saveDB();renderExtras();renderCharts();updateStats();
+    $("#run-date").value="";$("#run-km").value="";$("#run-time").value="";$("#run-note").value="";
+    $("#addRunForm").classList.remove("open");
+  });
   $("#accent").addEventListener("input",e=>{DB.accent=e.target.value;applyAccent(DB.accent);saveDB();});
 }
 
 (function(){
   loadDB();applyAccent(DB.accent||"#d4ff3d");
   $("#loading").style.display="none";$("#app").style.display="block";
-  initAdd();renderEvents();renderWeeks();renderWeight();renderCharts();updateStats();countdown();
+  initAdd();renderEvents();renderExtras();renderWeeks();renderWeight();renderCharts();updateStats();countdown();
 })();
 </script>
 </body>
